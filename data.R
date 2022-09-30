@@ -1,0 +1,10 @@
+library(shiny)
+library(shinydashboard)
+library(readr)
+library(DT)
+library(dplyr)
+library(tidyr)
+
+rankings <- read.csv('cbb_rankings.csv')
+teams <- select(rankings,Team)
+teams <- teams %>% arrange(teams)
