@@ -6,6 +6,8 @@ library(dplyr)
 library(tidyr)
 library(plyr)
 library(shinyBS)
+library(data.table)
+library(recoder)
 
 ##################
 # USER INTERFACE #
@@ -21,7 +23,7 @@ conf <- aggregate(rankings$Elo, by=list(Name=rankings$Conf), FUN=mean)
 colnames(conf)[2] <- 'avgElo'
 conf$avgElo <- round(conf$avgElo, 0)
 conf <- conf %>% arrange(desc(avgElo))
-conf <- cbind(Rk = 1:32, conf)
+conf <- cbind(Rk = 1:33, conf)
 
 
 ui <- fluidPage(
@@ -44,6 +46,7 @@ ui <- fluidPage(
     ),
     mainPanel(
       DTOutput('rankings'),
+      #paste0('img(src="',rankings_disp$Team,'.png")'),
       bsModal('hth','Game Simulation','submit', size='large', tableOutput('modal_tbl'))
     )
   )
@@ -56,7 +59,12 @@ ui <- fluidPage(
 ##########
 
 
+
+
+
+
 server <- function(input, output, session){
+
   
   output$rankings <- renderDT(
     rankings_disp,
@@ -75,7 +83,13 @@ server <- function(input, output, session){
     rh <- rankings$Elo[rankings$Team == input$home_team]
     ra <- rankings$Elo[rankings$Team == input$away_team]
     
-    hca <- rankings$pHCA[rankings$Team == input$home_team]
+    if (input$neutral == TRUE) {
+      hca <- 0
+    } else {
+      hca <- rankings$pHCA[rankings$Team == input$home_team]  
+    }
+    
+    
     
     ph <- (1/(1+10**((ra-rh)/400))) + hca
     ph <- round(ph,2) 
