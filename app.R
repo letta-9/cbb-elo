@@ -26,28 +26,41 @@ conf <- conf %>% arrange(desc(avgElo))
 conf <- cbind(Rk = 1:33, conf)
 
 
-ui <- fluidPage(
-  
-  titlePanel(title = 'CBB-ELO'),
-  sidebarLayout(
-    sidebarPanel(
-      h3('Game Simulation'),
-      br(),
-      selectInput('home_team','Home Team', choices = teams),
-      selectInput('away_team','Away Team', choices = teams),
-      br(),
-      checkboxInput('neutral', 'Neutral Site', FALSE),
-      actionButton('submit', 'Submit'),
-      br(),
-      br(),
-      h3('Conferences'),
-      br(),
-      tableOutput('conferences')
+ui <- dashboardPage(
+  dashboardHeader(title = 'CBB-ELO'),
+  dashboardSidebar(
+    h3('Game Simulation'),
+    br(),
+    selectInput('home_team','Home Team', choices = teams),
+    selectInput('away_team','Away Team', choices = teams),
+    br(),
+    checkboxInput('neutral', 'Neutral Site', FALSE),
+    actionButton('submit', 'Submit')
+  ),
+  dashboardBody(
+    fluidRow(
+      valueBoxOutput("first", width = 3),
+      valueBoxOutput("last", width = 3),     
+      valueBoxOutput("hot", width = 3),
+      valueBoxOutput("not", width = 3)
     ),
-    mainPanel(
-      DTOutput('rankings'),
-      #paste0('img(src="',rankings_disp$Team,'.png")'),
-      bsModal('hth','Game Simulation','submit', size='large', tableOutput('modal_tbl'))
+    br(),
+    br(),
+    fluidRow(
+      box(title = "Conferences",
+          solidHeader = F,
+          width = 4,
+          collapsible = F,
+          tableOutput('conferences')),
+      box(title='All 363',
+          solidHeader = F,
+          width = 8, 
+          collapsible = F,
+          DTOutput('rankings')),
+    ),
+    bsModal('hth','Game Simulation','submit', size='large',
+            tableOutput('modal_tbl')
+            #htmlOutput('home_logo'))
     )
   )
 )
@@ -64,7 +77,28 @@ ui <- fluidPage(
 
 
 server <- function(input, output, session){
-
+  
+  output$first <- renderValueBox({
+    valueBox(rankings$Team[rankings$Elo == max(rankings$Elo)], 
+             "Highest Ranked", icon = icon("crown"), color = "yellow")
+  })  
+  
+  output$last <- renderValueBox({
+    valueBox(rankings$Team[rankings$Elo == min(rankings$Elo)], 
+             "Lowest Ranked", icon = icon("poop"), color = "purple")
+  })  
+  
+  
+  output$hot <- renderValueBox({
+    valueBox('Kansas', 
+             "Who's Hot", icon = icon("fire"), color = "red")
+  })
+  
+  output$not <- renderValueBox({
+    valueBox('North Carolina', 
+             "Who's Not", icon = icon("snowflake"), color = "aqua")
+  })
+  
   
   output$rankings <- renderDT(
     rankings_disp,
@@ -119,15 +153,21 @@ server <- function(input, output, session){
     pa <- 100 - ph
     
     head_to_head <- data.frame(Home = c(input$home_team, rh, rankings$Rec[rankings$Team == input$home_team], ph, hml, hspr),
-                            Cat = c('Team','Elo', 'Rec', 'xWin %', 'Fair Dec Odds', 'Fair Spread'),
-                            Away = c(input$away_team, ra, rankings$Rec[rankings$Team == input$away_team], pa, aml, aspr)
+                               Cat = c('Team','Elo', 'Rec', 'xWin %', 'Fair Dec Odds', 'Fair Spread'),
+                               Away = c(input$away_team, ra, rankings$Rec[rankings$Team == input$away_team], pa, aml, aspr)
     )
   })
   
-   output$modal_tbl <- renderTable(
+  # output$home_logo <- renderText({
+  #   paste0('<img src ="',input$home_team,'.png"', ' alt="Flag not available"  height="150" width="150" ></img>')
+  #   })
+  
+  output$modal_tbl <- renderTable(
     head_to_head()
   )
-   
+  
+  
+  
   
 }
 
