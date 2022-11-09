@@ -14,56 +14,117 @@ library(recoder)
 ##################
 
 rankings <- read.csv('cbb_rankings.csv')
-rankings_disp <- rankings[1:9]
+rankings_disp <- rankings[c(1,2,3,4,5)]
+day_sched <- read.csv('day_sched.csv') 
+
 
 teams <- select(rankings,Team)
 teams <- teams %>% arrange(teams)
 
-conf <- aggregate(rankings$Elo, by=list(Name=rankings$Conf), FUN=mean)
+conf <- aggregate(rankings$Elo, by=list(Conf=rankings$Conf), FUN=mean)
 colnames(conf)[2] <- 'avgElo'
 conf$avgElo <- round(conf$avgElo, 0)
 conf <- conf %>% arrange(desc(avgElo))
 conf <- cbind(Rk = 1:33, conf)
+max_team <- rankings[order(rankings$Conf, -rankings$Elo),]
+min_team <- rankings[order(rankings$Conf, rankings$Elo),]
+max_team <- max_team[!duplicated(max_team$Conf),]
+min_team <- min_team[!duplicated(min_team$Conf),]
+max_team <- max_team[,c(2,3,5)]
+min_team <- min_team[,c(2,3,5)]
+conf <- merge(conf, c(max_team,min_team), by='Conf')
+conf <- conf[,c(2,1,3,4,5,6,8)]
+colnames(conf) <- c('Rk','Conf','avgElo','maxTeam','maxElo','minTeam','minElo')
+conf <- conf %>% arrange(Rk)
+
+next_games <- rankings[c(1,2,3,4,10)]
+
+conf_list <- unique(rankings[,3])
+conf_list <- data.frame(conf_list)
+conf_list <- conf_list %>% arrange(conf_list)
+
 
 
 ui <- dashboardPage(
+  
+
+  
   dashboardHeader(title = 'CBB-ELO'),
+  
   dashboardSidebar(
-    h3('Game Simulation'),
-    br(),
-    selectInput('home_team','Home Team', choices = teams),
-    selectInput('away_team','Away Team', choices = teams),
-    br(),
-    checkboxInput('neutral', 'Neutral Site', FALSE),
-    actionButton('submit', 'Submit')
+    sidebarMenu(
+      menuItem("Rankings", tabName = "rank_tab", icon = icon("chart-simple")),
+      menuItem("Game Simulation", tabName = "sim_tab", icon = icon("basketball")),
+      menuItem("Projections", icon = icon("umbrella"), tabName = "proj_tab",
+               badgeLabel = "Coming Soon", badgeColor = "red"),
+      menuItem("Results", icon = icon("chart-line"), tabName = "res_tab",
+               badgeLabel = "Coming Soon", badgeColor = "red")
+    )
   ),
+  
   dashboardBody(
-    fluidRow(
-      valueBoxOutput("first", width = 3),
-      valueBoxOutput("last", width = 3),     
-      valueBoxOutput("hot", width = 3),
-      valueBoxOutput("not", width = 3)
-    ),
-    br(),
-    br(),
-    fluidRow(
-      box(title = "Conferences",
-          solidHeader = F,
-          width = 4,
-          collapsible = F,
-          tableOutput('conferences')),
-      box(title='All 363',
-          solidHeader = F,
-          width = 8, 
-          collapsible = F,
-          DTOutput('rankings')),
-    ),
-    bsModal('hth','Game Simulation','submit', size='large',
-            tableOutput('modal_tbl')
-            #htmlOutput('home_logo'))
+    tabItems(
+      tabItem(tabName = "rank_tab",
+              fluidRow(
+                valueBoxOutput("first", width = 3),
+                valueBoxOutput("last", width = 3),     
+                valueBoxOutput("hot", width = 3),
+                valueBoxOutput("not", width = 3)
+              ),
+              br(),
+              br(),
+              fluidRow(
+                box(title = "More Tables",
+                    width = 4, 
+                    collapsible = T,
+                    collapsed = T,
+                    tabBox(id = 'conf_box',
+                        width = 4,
+                        tabPanel("Conf Summary", 
+                                 tableOutput('conferences'), 
+                                 style = "font-size: 70%;"),
+                        tabPanel("By Conf",
+                                 selectInput('conf_drop','Conference', conf_list),
+                                 tableOutput('by_conf')),
+                        ),
+                ),
+                box(title='All 363',
+                    solidHeader = F,
+                    width = 6, 
+                    collapsible = F,
+                    DTOutput('rankings'), style = "font-size: 75%;"),
+              ),
+      ),
+      
+      tabItem(tabName = "sim_tab",
+              box(title = "Game Simulation",
+                  solidHeader = F,
+                  width = 4,
+                  collapsible = F,
+                  selectInput('home_team','Home Team', choices = teams),
+                  selectInput('away_team','Away Team', choices = teams),
+                  checkboxInput('neutral', 'Neutral Site', FALSE),
+                  actionButton('submit', 'Submit')),
+              box(title = "11/8 Games",
+                  solidHeader = F,
+                  width = 4,
+                  collapsible = F,
+                  DTOutput('next_games'), style = "font-size: 75%;",
+              ),
+              bsModal('hth','Game Simulation','submit', size='large',
+                      column(4,htmlOutput('home_logo')),
+                      column(4,tableOutput('modal_tbl')),
+                      column(4,htmlOutput('away_logo'))
+              )
+      ),
+      
+      tabItem(tabName = "proj_tab",
+              h2("March Madness Projections - Coming Soon")
+      )
     )
   )
 )
+
 
 
 
@@ -79,23 +140,33 @@ ui <- dashboardPage(
 server <- function(input, output, session){
   
   output$first <- renderValueBox({
-    valueBox(rankings$Team[rankings$Elo == max(rankings$Elo)], 
-             "Highest Ranked", icon = icon("crown"), color = "yellow")
+    valueBox(paste0(rankings$Team[rankings$Elo == max(rankings$Elo)],' (',max(rankings$Elo),')'), 
+             "Highest Ranked (Elo)", icon = icon("crown"), color = "yellow")
   })  
   
   output$last <- renderValueBox({
-    valueBox(rankings$Team[rankings$Elo == min(rankings$Elo)], 
-             "Lowest Ranked", icon = icon("poop"), color = "purple")
+    valueBox(paste0(rankings$Team[rankings$Elo == min(rankings$Elo)],' (',min(rankings$Elo),')'), 
+             "Lowest Ranked (Elo)", icon = icon("poop"), color = "purple")
   })  
   
   
+  # output$hot <- renderValueBox({
+  #   valueBox(paste0(rankings$Team[rankings$Last.3 == max(rankings$Last.3)],' (+',max(rankings$Last.3),')'),
+  #            "Who's Hot (Last 3)", icon = icon("fire"), color = "red")
+  # })
+  # 
+  # output$not <- renderValueBox({
+  #   valueBox(paste0(rankings$Team[rankings$Last.3 == min(rankings$Last.3)],' (',min(rankings$Last.3),')'),
+  #            "Who's Not (Last 3)", icon = icon("snowflake"), color = "aqua")
+  # })
+  
   output$hot <- renderValueBox({
-    valueBox('Kansas', 
+    valueBox(paste0(rankings$Team[rankings$Last.3 == max(rankings$Last.3)]),
              "Who's Hot", icon = icon("fire"), color = "red")
   })
   
   output$not <- renderValueBox({
-    valueBox('North Carolina', 
+    valueBox(paste0(rankings$Team[rankings$Last.3 == min(rankings$Last.3)]),
              "Who's Not", icon = icon("snowflake"), color = "aqua")
   })
   
@@ -111,6 +182,11 @@ server <- function(input, output, session){
     conf
   )
   
+  output$by_conf <- renderTable(
+    rankings %>% filter(Conf == input$conf_drop) %>% select(Rk, Team, Rec, Elo),
+    rankings$Conf_Rk <- c(1:nrow(rankings))
+  )
+  
   
   head_to_head = reactive({
     
@@ -123,11 +199,10 @@ server <- function(input, output, session){
       hca <- rankings$pHCA[rankings$Team == input$home_team]  
     }
     
-    
-    
+  
     ph <- (1/(1+10**((ra-rh)/400))) + hca
     ph <- round(ph,2) 
-    pa <- 1 - ph
+    pa <- 1 - ph 
     
     hml <- 1/ph
     hml <- round(hml,2)
@@ -135,12 +210,13 @@ server <- function(input, output, session){
     aml <- round(aml,2)
     
     if (ph > pa){
-      hspr <- (-32.891 * ph)  + 17.018
+      #hspr <- (-32.891 * ph)  + 17.018
+      hspr <- (-128.07 * (ph**2)) + (117.25 * ph) - 28.482
       hspr <- round(hspr, 1)
       aspr <- -hspr
     } else {
-      aspr <- (-32.891 * pa)  + 17.018
-      aspr <- round(aspr, 0)
+      aspr <- (-128.07 * (ph**2)) + (117.25 * ph) - 28.482
+      aspr <- round(aspr, 1)
       hspr <- -aspr
     }
     
@@ -150,6 +226,11 @@ server <- function(input, output, session){
     }
     
     ph <- ph * 100
+    
+    if (ph > 100){
+      ph <- 100
+    }
+    
     pa <- 100 - ph
     
     head_to_head <- data.frame(Home = c(input$home_team, rh, rankings$Rec[rankings$Team == input$home_team], ph, hml, hspr),
@@ -158,18 +239,25 @@ server <- function(input, output, session){
     )
   })
   
-  # output$home_logo <- renderText({
-  #   paste0('<img src ="',input$home_team,'.png"', ' alt="Flag not available"  height="150" width="150" ></img>')
-  #   })
+  output$home_logo <- renderText({
+    paste0('<img src ="',input$home_team,'.png"', ' height="200" width="200" ></img>')
+    })
   
   output$modal_tbl <- renderTable(
     head_to_head()
   )
   
+  output$away_logo <- renderText({
+    paste0('<img src ="',input$away_team,'.png"', ' height="200" width="200" ></img>')
+  })
   
-  
+  output$next_games <- renderDT(
+    day_sched,
+    options = list(pageLength = 400),
+    rownames = FALSE,
+    selection = "single",
+  )
   
 }
-
 
 shinyApp(ui, server)
