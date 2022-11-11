@@ -139,57 +139,106 @@ scores$home_spd[scores$home_abv == scores$fav_abv] <- scores$fav_spd[scores$home
 
 scores$away_spd <- as.numeric(scores$away_spd)
 scores$home_spd <- as.numeric(scores$home_spd)
+scores$fav_spd <- as.numeric(scores$fav_spd)
 
 
 scores$away_spd[is.na(scores$away_spd)] <- (scores$home_spd[is.na(scores$away_spd)] * -1)
 scores$home_spd[is.na(scores$home_spd)] <- (scores$away_spd[is.na(scores$home_spd)] * -1)
+
+scores <- scores[c(1,10,2,3,4,5,13,11,16,17,12,8,9,15,14)]
 
 
 ######################
 # Elo Update #
 ######################
 
-# for (i in 1:nrow(scores)){
-#   away <- scores[i,2]
-#   home <- scores[i,3]
-# 
-#   rankings$One[rankings$Team == away] <- rankings$Two[rankings$Team == away]
-#   rankings$One[rankings$Team == home] <- rankings$Two[rankings$Team == home]
-# 
-#   rankings$Two[rankings$Team == away] <- rankings$Three[rankings$Team == away]
-#   rankings$Two[rankings$Team == home] <- rankings$Three[rankings$Team == home]
-# 
-#   rankings$Three[rankings$Team == away] <- rankings$Elo[rankings$Team == away]
-#   rankings$Three[rankings$Team == home] <- rankings$Elo[rankings$Team == home]
-# 
-#   ptsAway <- scores[i,8]
-#   ptsHome <- scores[i,9]
-#   rAway <- rankings$Elo[rankings$Team == away]
-#   rHome <- rankings$Elo[rankings$Team == home]
-# 
-#   hca <- rankings$pHCA[rankings$Team == home]
-# 
-#   scores[i,15] <- (1/(1+10**((rHome-rAway)/400))) + hca
-#   scores[i,16] <- 1 - scores[i,15]
-# 
-#   pHome <- scores[i,16]
-#   pAway <- 1 - pHome
-# 
-#   if (ptsAway > ptsHome){
-#     rankings$Win[rankings$Team == away] = rankings$Win[rankings$Team == away] + 1
-#     rankings$Loss[rankings$Team == home] = rankings$Loss[rankings$Team == home] + 1
-# 
-#     rankings$Elo[rankings$Team == away] <- round(rAway + 32*(1 - pAway),0)
-#     rankings$Elo[rankings$Team == home] <- round(rHome + 32*(0 - pHome),0)
-#   } else {
-#     rankings$Win[rankings$Team == home] = rankings$Win[rankings$Team == home] + 1
-#     rankings$Loss[rankings$Team == away] = rankings$Loss[rankings$Team == away] + 1
-# 
-#     rankings$Elo[rankings$Team == away] <- round(rAway + 32*(0 - pAway),0)
-#     rankings$Elo[rankings$Team == home] <- round(rHome + 32*(1 - pHome),0)
-#   }
-# }
-# 
+for (i in 1:nrow(scores)){
+  away <- scores[i,3]
+  home <- scores[i,4]
+
+  rankings$One[rankings$Team == away] <- rankings$Two[rankings$Team == away]
+  rankings$One[rankings$Team == home] <- rankings$Two[rankings$Team == home]
+
+  rankings$Two[rankings$Team == away] <- rankings$Three[rankings$Team == away]
+  rankings$Two[rankings$Team == home] <- rankings$Three[rankings$Team == home]
+
+  rankings$Three[rankings$Team == away] <- rankings$Elo[rankings$Team == away]
+  rankings$Three[rankings$Team == home] <- rankings$Elo[rankings$Team == home]
+
+  ptsAway <- scores[i,12]
+  ptsHome <- scores[i,13]
+  rAway <- rankings$Elo[rankings$Team == away]
+  rHome <- rankings$Elo[rankings$Team == home]
+
+  hca <- rankings$pHCA[rankings$Team == home]
+
+  scores[i,16] <- (1/(1+10**((rHome-rAway)/400))) + hca
+  scores[i,17] <- 1 - scores[i,16]
+  
+  names(scores)[16] <- 'away_prob'
+  names(scores)[17] <- 'home_prob'
+
+  
+  if (scores[i,17] > scores[i,16]){
+    hspr <- (-128.07 * (scores[i,17]**2)) + (117.25 * scores[i,17]) - 28.482
+    hspr <- round(hspr, 1)
+    aspr <- -hspr
+  } else {
+    aspr <- (-128.07 * (scores[i,16]**2)) + (117.25 * scores[i,16]) - 28.482
+    aspr <- round(aspr, 1)
+    hspr <- -aspr
+  }
+
+  if (hspr == -0 || aspr == -0){
+    hspr <- 0
+    aspr <- 0
+  }
+
+  scores[i,18] <- aspr
+  scores[i,19] <- hspr
+
+  names(scores)[18] <- 'mod_away_spd'
+  names(scores)[19] <- 'mod_home_spd'
+
+  if (ptsAway > ptsHome){
+    rankings$Win[rankings$Team == away] <- rankings$Win[rankings$Team == away] + 1
+    rankings$Loss[rankings$Team == home] <- rankings$Loss[rankings$Team == home] + 1
+
+    rankings$Elo[rankings$Team == away] <- round(rAway + 32*(1 - scores[i,16]),0)
+    rankings$Elo[rankings$Team == home] <- round(rHome + 32*(0 - scores[i,17]),0)
+  } else {
+    rankings$Win[rankings$Team == home] <- rankings$Win[rankings$Team == home] + 1
+    rankings$Loss[rankings$Team == away] <- rankings$Loss[rankings$Team == away] + 1
+
+    rankings$Elo[rankings$Team == away] <- round(rAway + 32*(0 - scores[i,16]),0)
+    rankings$Elo[rankings$Team == home] <- round(rHome + 32*(1 - scores[i,17]),0)
+  }
+  
+  if (scores[i,18] < scores[i,9]) {
+    scores[i,20] <- paste(scores[i,5],scores[i,9])
+  } else {
+    scores[i,20] <- paste(scores[i,6],scores[i,10])
+  }
+  
+  names(scores)[20] <- 'pick'
+
+  # if ((scores[i,15] - scores[i,14]) < scores[i,12]){
+  #   rankings$ATS.W[rankings$Abv == scores[i,11]] <- rankings$ATS.W[rankings$Abv == scores[i,11]] + 1
+  #   rankings$ATS.L[rankings$Abv == scores[i,13]] <- rankings$ATS.L[rankings$Abv == scores[i,13]] + 1
+  #   rankings$Units[rankings$Abv == scores[i,11]] <- rankings$Units[rankings$Abv == scores[i,11]] + 0.91
+  #   rankings$Units[rankings$Abv == scores[i,13]] <- rankings$Units[rankings$Abv == scores[i,13]] - 1
+  # } else {
+  #   rankings$ATS.W[rankings$Abv == scores[i,13]] <- rankings$ATS.W[rankings$Abv == scores[i,13]] + 1
+  #   rankings$ATS.L[rankings$Abv == scores[i,11]] <- rankings$ATS.L[rankings$Abv == scores[i,11]] + 1
+  #   rankings$Units[rankings$Abv == scores[i,13]] <- rankings$Units[rankings$Abv == scores[i,13]] + 0.91
+  #   rankings$Units[rankings$Abv == scores[i,11]] <- rankings$Units[rankings$Abv == scores[i,11]] - 1
+  # }
+  
+}
+
+
+
+# rankings$ATS <- paste0(rankings$ATS.W, '-', rankings$ATS.L)
 # rankings$Rec <- paste0(rankings$Win, '-', rankings$Loss)
 # rankings <- rankings %>% arrange(desc(Elo))
 # rankings$Rk <- c(1:363)
