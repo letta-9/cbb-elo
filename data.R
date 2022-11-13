@@ -51,7 +51,7 @@ rankings <- read.csv('cbb_rankings_ncaahoopr.csv')
 ####################################
 
 
-# scores <- get_master_schedule('2022-11-11')
+# scores <- get_master_schedule('2022-11-12')
 # scores$away <- iconv(scores$away, from = "UTF-8", to = "ASCII//TRANSLIT")
 # scores$home <- iconv(scores$home, from = "UTF-8", to = "ASCII//TRANSLIT")
 # scores$away <- str_trim(scores$away, "left")
@@ -73,7 +73,7 @@ rankings <- read.csv('cbb_rankings_ncaahoopr.csv')
 # ADD BETTING LINES AND ABREVIATIONS
 ####################################
 
-scores <- get_master_schedule('2022-11-08')
+scores <- get_master_schedule('2022-11-07')
 scores$away <- iconv(scores$away, from = "UTF-8", to = "ASCII//TRANSLIT")
 scores$home <- iconv(scores$home, from = "UTF-8", to = "ASCII//TRANSLIT")
 scores$away <- str_trim(scores$away, "left")
@@ -87,23 +87,23 @@ away_abv_list <- list()
 home_abv_list <- list()
 
 for (i in ids){
-  url <- paste0('https://www.espn.com/mens-college-basketball/game/_/gameId/', i)
-  webpage <- read_html(url)
-  pagetext <- rvest::html_text(webpage)
+ url <- paste0('https://www.espn.com/mens-college-basketball/game/_/gameId/', i)
+ webpage <- read_html(url)
+ pagetext <- rvest::html_text(webpage)
 
-  #Get Abreviations
-  abv <- unlist(strsplit(pagetext, "Rebounds"))[[4]][1]
-  abv <- unlist(strsplit(abv, "Full"))[1]
-  abv <- gsub('[0-9]+', ' ', abv)
-  away_abv <- unlist(strsplit(abv, " "))[1]
-  away_abv_list <- append(away_abv_list, away_abv)
-  home_abv <- unlist(strsplit(abv, " "))[2]
-  home_abv_list <- append(home_abv_list, home_abv)
+ #Get Abreviations
+ abv <- unlist(strsplit(pagetext, "Rebounds"))[[4]][1]
+ abv <- unlist(strsplit(abv, "Full"))[1]
+ abv <- gsub('[0-9]+', ' ', abv)
+ away_abv <- unlist(strsplit(abv, " "))[1]
+ away_abv_list <- append(away_abv_list, away_abv)
+ home_abv <- unlist(strsplit(abv, " "))[2]
+ home_abv_list <- append(home_abv_list, home_abv)
 
-  #Get Odds
-  odds <- unlist(strsplit(pagetext, "Line: "))[[2]][1]
-  odds <- unlist(strsplit(odds, "\n"))[1]
-  lines <- append(lines, odds)
+ #Get Odds
+ odds <- unlist(strsplit(pagetext, "Line: "))[[2]][1]
+ odds <- unlist(strsplit(odds, "\n"))[1]
+ lines <- append(lines, odds)
 }
 
 away_abv <- as.data.frame(away_abv_list)
@@ -153,96 +153,134 @@ scores <- scores[c(1,10,2,3,4,5,13,11,16,17,12,8,9,15,14)]
 ######################
 
 for (i in 1:nrow(scores)){
-  away <- scores[i,3]
-  home <- scores[i,4]
+ away <- scores[i,3]
+ home <- scores[i,4]
 
-  rankings$One[rankings$Team == away] <- rankings$Two[rankings$Team == away]
-  rankings$One[rankings$Team == home] <- rankings$Two[rankings$Team == home]
+ rankings$One[rankings$Team == away] <- rankings$Two[rankings$Team == away]
+ rankings$One[rankings$Team == home] <- rankings$Two[rankings$Team == home]
 
-  rankings$Two[rankings$Team == away] <- rankings$Three[rankings$Team == away]
-  rankings$Two[rankings$Team == home] <- rankings$Three[rankings$Team == home]
+ rankings$Two[rankings$Team == away] <- rankings$Three[rankings$Team == away]
+ rankings$Two[rankings$Team == home] <- rankings$Three[rankings$Team == home]
 
-  rankings$Three[rankings$Team == away] <- rankings$Elo[rankings$Team == away]
-  rankings$Three[rankings$Team == home] <- rankings$Elo[rankings$Team == home]
+ rankings$Three[rankings$Team == away] <- rankings$Elo[rankings$Team == away]
+ rankings$Three[rankings$Team == home] <- rankings$Elo[rankings$Team == home]
 
-  ptsAway <- scores[i,12]
-  ptsHome <- scores[i,13]
-  rAway <- rankings$Elo[rankings$Team == away]
-  rHome <- rankings$Elo[rankings$Team == home]
+ ptsAway <- scores[i,12]
+ ptsHome <- scores[i,13]
+ rAway <- rankings$Elo[rankings$Team == away]
+ rHome <- rankings$Elo[rankings$Team == home]
 
-  hca <- rankings$pHCA[rankings$Team == home]
+ hca <- rankings$pHCA[rankings$Team == home]
 
-  scores[i,16] <- (1/(1+10**((rHome-rAway)/400))) + hca
-  scores[i,17] <- 1 - scores[i,16]
-  
-  names(scores)[16] <- 'away_prob'
-  names(scores)[17] <- 'home_prob'
+ scores[i,16] <- (1/(1+10**((rHome-rAway)/400))) + hca
+ scores[i,17] <- 1 - scores[i,16]
 
-  
-  if (scores[i,17] > scores[i,16]){
-    hspr <- (-128.07 * (scores[i,17]**2)) + (117.25 * scores[i,17]) - 28.482
-    hspr <- round(hspr, 1)
-    aspr <- -hspr
-  } else {
-    aspr <- (-128.07 * (scores[i,16]**2)) + (117.25 * scores[i,16]) - 28.482
-    aspr <- round(aspr, 1)
-    hspr <- -aspr
-  }
+ names(scores)[16] <- 'away_prob'
+ names(scores)[17] <- 'home_prob'
 
-  if (hspr == -0 || aspr == -0){
-    hspr <- 0
-    aspr <- 0
-  }
+ if (scores[i,17] > scores[i,16]){
+   hspr <- (-128.07 * (scores[i,17]**2)) + (117.25 * scores[i,17]) - 28.482
+   hspr <- round(hspr, 1)
+   aspr <- -hspr
+ } else {
+   aspr <- (-128.07 * (scores[i,16]**2)) + (117.25 * scores[i,16]) - 28.482
+   aspr <- round(aspr, 1)
+   hspr <- -aspr
+ }
 
-  scores[i,18] <- aspr
-  scores[i,19] <- hspr
+ if (hspr == -0 || aspr == -0){
+   hspr <- 0
+   aspr <- 0
+ }
 
-  names(scores)[18] <- 'mod_away_spd'
-  names(scores)[19] <- 'mod_home_spd'
+ scores[i,18] <- aspr
+ scores[i,19] <- hspr
 
-  if (ptsAway > ptsHome){
-    rankings$Win[rankings$Team == away] <- rankings$Win[rankings$Team == away] + 1
-    rankings$Loss[rankings$Team == home] <- rankings$Loss[rankings$Team == home] + 1
+ names(scores)[18] <- 'mod_away_spd'
+ names(scores)[19] <- 'mod_home_spd'
 
-    rankings$Elo[rankings$Team == away] <- round(rAway + 32*(1 - scores[i,16]),0)
-    rankings$Elo[rankings$Team == home] <- round(rHome + 32*(0 - scores[i,17]),0)
-  } else {
-    rankings$Win[rankings$Team == home] <- rankings$Win[rankings$Team == home] + 1
-    rankings$Loss[rankings$Team == away] <- rankings$Loss[rankings$Team == away] + 1
+ if (ptsAway > ptsHome){
+   rankings$Win[rankings$Team == away] <- rankings$Win[rankings$Team == away] + 1
+   rankings$Loss[rankings$Team == home] <- rankings$Loss[rankings$Team == home] + 1
 
-    rankings$Elo[rankings$Team == away] <- round(rAway + 32*(0 - scores[i,16]),0)
-    rankings$Elo[rankings$Team == home] <- round(rHome + 32*(1 - scores[i,17]),0)
-  }
-  
-  if (scores[i,18] < scores[i,9]) {
-    scores[i,20] <- paste(scores[i,5],scores[i,9])
-  } else {
-    scores[i,20] <- paste(scores[i,6],scores[i,10])
-  }
-  
-  names(scores)[20] <- 'pick'
+   rankings$Elo[rankings$Team == away] <- round(rAway + 32*(1 - scores[i,16]),0)
+   rankings$Elo[rankings$Team == home] <- round(rHome + 32*(0 - scores[i,17]),0)
+ } else {
+   rankings$Win[rankings$Team == home] <- rankings$Win[rankings$Team == home] + 1
+   rankings$Loss[rankings$Team == away] <- rankings$Loss[rankings$Team == away] + 1
 
-  # if ((scores[i,15] - scores[i,14]) < scores[i,12]){
-  #   rankings$ATS.W[rankings$Abv == scores[i,11]] <- rankings$ATS.W[rankings$Abv == scores[i,11]] + 1
-  #   rankings$ATS.L[rankings$Abv == scores[i,13]] <- rankings$ATS.L[rankings$Abv == scores[i,13]] + 1
-  #   rankings$Units[rankings$Abv == scores[i,11]] <- rankings$Units[rankings$Abv == scores[i,11]] + 0.91
-  #   rankings$Units[rankings$Abv == scores[i,13]] <- rankings$Units[rankings$Abv == scores[i,13]] - 1
-  # } else {
-  #   rankings$ATS.W[rankings$Abv == scores[i,13]] <- rankings$ATS.W[rankings$Abv == scores[i,13]] + 1
-  #   rankings$ATS.L[rankings$Abv == scores[i,11]] <- rankings$ATS.L[rankings$Abv == scores[i,11]] + 1
-  #   rankings$Units[rankings$Abv == scores[i,13]] <- rankings$Units[rankings$Abv == scores[i,13]] + 0.91
-  #   rankings$Units[rankings$Abv == scores[i,11]] <- rankings$Units[rankings$Abv == scores[i,11]] - 1
-  # }
+  rankings$Elo[rankings$Team == away] <- round(rAway + 32*(0 - scores[i,16]),0)
+   rankings$Elo[rankings$Team == home] <- round(rHome + 32*(1 - scores[i,17]),0)
+ }
+
+ 
+ if (scores[i,18] < scores[i,9]) {
+   scores[i,20] <- scores[i,5]
+   scores[i,21] <- scores[i,9]
+ } else {
+   scores[i,20] <- scores[i,6]
+   scores[i,21] <- scores[i,10]
+ }
+
+ names(scores)[20] <- 'pick_abv'
+ names(scores)[21] <- 'pick_spd' 
+ 
+ if (scores[i,21] > 0) {
+   scores[i,22] <- scores$und_score[scores$und_abv == scores[i,20]]
+   scores[i,23] <- scores$fav_abv[scores$und_abv == scores[i,20]]
+   scores[i,24] <- scores$fav_score[scores$fav_abv == scores[i,23]]
+ } else {
+   scores[i,22] <- scores$fav_score[scores$fav_abv == scores[i,20]]   
+   scores[i,23] <- scores$und_abv[scores$fav_abv == scores[i,20]]
+   scores[i,24] <- scores$und_score[scores$und_abv == scores[i,23]]
+ }
+ 
+ names(scores)[22] <- 'pick_score'
+ names(scores)[23] <- 'opp_abv'
+ names(scores)[24] <- 'opp_score'
+ 
+ scores$act_spd <- scores$opp_score - scores$pick_score
+ 
+ scores$ATS.hit <- scores$act_spd < scores$pick_spd
+ 
+ if (scores[i,26] == TRUE){
+   rankings$ATS.W[rankings$Abv == scores[i,20]] <- rankings$ATS.W[rankings$Abv == scores[i,20]] + 1
+   rankings$Units[rankings$Abv == scores[i,20]] <- rankings$Units[rankings$Abv == scores[i,20]] + 0.91   
+ } else {
+   rankings$ATS.L[rankings$Abv == scores[i,20]] <- rankings$ATS.L[rankings$Abv == scores[i,20]] + 1
+   rankings$Units[rankings$Abv == scores[i,20]] <- rankings$Units[rankings$Abv == scores[i,20]] - 1   
+ }
+
   
 }
 
+rankings$ATS <- paste0(rankings$ATS.W, '-', rankings$ATS.L)
+rankings$Rec <- paste0(rankings$Win, '-', rankings$Loss)
+rankings <- rankings %>% arrange(desc(Elo))
+rankings$Rk <- c(1:363)
+rankings$Last.3 <- (rankings$Elo - rankings$Three) + (rankings$Three - rankings$Two) + (rankings$Two - rankings$One)
+
+write_csv(rankings, 'cbb_rankings_ncaahoopr.csv')
 
 
-# rankings$ATS <- paste0(rankings$ATS.W, '-', rankings$ATS.L)
-# rankings$Rec <- paste0(rankings$Win, '-', rankings$Loss)
-# rankings <- rankings %>% arrange(desc(Elo))
-# rankings$Rk <- c(1:363)
-# rankings$Last.3 <- (rankings$Elo - rankings$Three) + (rankings$Three - rankings$Two) + (rankings$Two - rankings$One)
+######################
+# RESULTS
+######################
 
+results <- data.frame(matrix(ncol = 5, nrow = 1))
 
+date <- scores[1,2]
+wins <- rankings %>% summarise(sum(ATS.W))
+losses <- rankings %>% summarise(sum(ATS.L))
+units <- rankings %>% summarise(sum(Units))
+
+results[,1] <- date
+results[,2] <- wins
+results[,3] <- losses
+results[,4] <- (results[,2] / (results[,2] + results[,3])) * 100
+results[,5] <- units
+
+colnames(results) <- c('Date','ATS.Win', 'ATS.Loss','Win%','Units')
+
+write_csv(results, 'results.csv')
 
