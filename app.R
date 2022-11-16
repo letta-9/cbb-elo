@@ -13,7 +13,7 @@ library(recoder)
 # USER INTERFACE #
 ##################
 
-rankings <- read.csv('cbb_rankings.csv')
+rankings <- read.csv('cbb_rankings_ncaahoopr.csv')
 rankings_disp <- rankings[c(1,2,3,4,5)]
 day_sched <- read.csv('day_sched.csv') 
 
@@ -101,11 +101,11 @@ ui <- dashboardPage(
                   solidHeader = F,
                   width = 4,
                   collapsible = F,
+                  selectInput('away_team','Away Team', choices = teams),                  
                   selectInput('home_team','Home Team', choices = teams),
-                  selectInput('away_team','Away Team', choices = teams),
                   checkboxInput('neutral', 'Neutral Site', FALSE),
                   actionButton('submit', 'Submit')),
-              box(title = "11/8 Games",
+              box(title = "11/15 Games",
                   solidHeader = F,
                   width = 4,
                   collapsible = F,
@@ -150,25 +150,34 @@ server <- function(input, output, session){
   })  
   
   
-  # output$hot <- renderValueBox({
-  #   valueBox(paste0(rankings$Team[rankings$Last.3 == max(rankings$Last.3)],' (+',max(rankings$Last.3),')'),
-  #            "Who's Hot (Last 3)", icon = icon("fire"), color = "red")
-  # })
-  # 
+  output$hot <- renderValueBox({
+    hot <- rankings$Team[rankings$Last.3 == max(rankings$Last.3)]
+    hot <- hot[1]
+    valueBox(paste0(hot,' (+',rankings$Last.3[rankings$Team == hot],')'),
+             "Who's Hot (Last 3)", icon = icon("fire"), color = "red")
+  })
+  
+  output$not <- renderValueBox({
+    not <- rankings$Team[rankings$Last.3 == min(rankings$Last.3)]
+    not <- not[1]
+    valueBox(paste0(not,' (',rankings$Last.3[rankings$Team == not],')'),
+             "Who's Not (Last 3)", icon = icon("snowflake"), color = "aqua")
+  })
+
   # output$not <- renderValueBox({
   #   valueBox(paste0(rankings$Team[rankings$Last.3 == min(rankings$Last.3)],' (',min(rankings$Last.3),')'),
   #            "Who's Not (Last 3)", icon = icon("snowflake"), color = "aqua")
   # })
   
-  output$hot <- renderValueBox({
-    valueBox(paste0(rankings$Team[rankings$Last.3 == max(rankings$Last.3)]),
-             "Who's Hot", icon = icon("fire"), color = "red")
-  })
-  
-  output$not <- renderValueBox({
-    valueBox(paste0(rankings$Team[rankings$Last.3 == min(rankings$Last.3)]),
-             "Who's Not", icon = icon("snowflake"), color = "aqua")
-  })
+  # output$hot <- renderValueBox({
+  #   valueBox(paste0(rankings$Team[rankings$Last.3 == max(rankings$Last.3)]),
+  #            "Who's Hot", icon = icon("fire"), color = "red")
+  # })
+  # 
+  # output$not <- renderValueBox({
+  #   valueBox(paste0(rankings$Team[rankings$Last.3 == min(rankings$Last.3)]),
+  #            "Who's Not", icon = icon("snowflake"), color = "aqua")
+  # })
   
   
   output$rankings <- renderDT(
@@ -210,12 +219,11 @@ server <- function(input, output, session){
     aml <- round(aml,2)
     
     if (ph > pa){
-      #hspr <- (-32.891 * ph)  + 17.018
       hspr <- (-128.07 * (ph**2)) + (117.25 * ph) - 28.482
       hspr <- round(hspr, 1)
       aspr <- -hspr
     } else {
-      aspr <- (-128.07 * (ph**2)) + (117.25 * ph) - 28.482
+      aspr <- (-128.07 * (pa**2)) + (117.25 * pa) - 28.482
       aspr <- round(aspr, 1)
       hspr <- -aspr
     }

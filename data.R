@@ -51,7 +51,7 @@ rankings <- read.csv('cbb_rankings_ncaahoopr.csv')
 ####################################
 
 
-# scores <- get_master_schedule('2022-11-12')
+# scores <- get_master_schedule('2022-11-15')
 # scores$away <- iconv(scores$away, from = "UTF-8", to = "ASCII//TRANSLIT")
 # scores$home <- iconv(scores$home, from = "UTF-8", to = "ASCII//TRANSLIT")
 # scores$away <- str_trim(scores$away, "left")
@@ -73,7 +73,8 @@ rankings <- read.csv('cbb_rankings_ncaahoopr.csv')
 # ADD BETTING LINES AND ABREVIATIONS
 ####################################
 
-scores <- get_master_schedule('2022-11-07')
+scores <- get_master_schedule('2022-11-14')
+#scores <- read.csv('111022_test.csv')
 scores$away <- iconv(scores$away, from = "UTF-8", to = "ASCII//TRANSLIT")
 scores$home <- iconv(scores$home, from = "UTF-8", to = "ASCII//TRANSLIT")
 scores$away <- str_trim(scores$away, "left")
@@ -85,6 +86,8 @@ ids <- as.list(scores$game_id)
 lines <- list()
 away_abv_list <- list()
 home_abv_list <- list()
+
+# ids <- ids[-38]
 
 for (i in ids){
  url <- paste0('https://www.espn.com/mens-college-basketball/game/_/gameId/', i)
@@ -106,6 +109,10 @@ for (i in ids){
  lines <- append(lines, odds)
 }
 
+# lines <- append(lines, "UCSD -2.0")
+# away_abv_list <- append(away_abv_list, 'SAC')
+# home_abv_list <- append(home_abv_list, 'UCSD')
+
 away_abv <- as.data.frame(away_abv_list)
 home_abv <- as.data.frame(home_abv_list)
 away_abv <- t(away_abv)
@@ -122,6 +129,9 @@ lines <- as.data.frame(lines)
 lines <- t(lines)
 row.names(lines) <- NULL
 scores <- cbind(scores, lines)
+
+scores$lines[scores$lines == 'EVEN'] <- paste(scores$home_abv[scores$lines == 'EVEN'], '-0.1')
+
 
 scores <- scores %>% separate(lines, c("fav_abv", "fav_spd"), " ")
 
@@ -213,7 +223,7 @@ for (i in 1:nrow(scores)){
    rankings$Elo[rankings$Team == home] <- round(rHome + 32*(1 - scores[i,17]),0)
  }
 
- 
+
  if (scores[i,18] < scores[i,9]) {
    scores[i,20] <- scores[i,5]
    scores[i,21] <- scores[i,9]
@@ -223,35 +233,35 @@ for (i in 1:nrow(scores)){
  }
 
  names(scores)[20] <- 'pick_abv'
- names(scores)[21] <- 'pick_spd' 
- 
+ names(scores)[21] <- 'pick_spd'
+
  if (scores[i,21] > 0) {
    scores[i,22] <- scores$und_score[scores$und_abv == scores[i,20]]
    scores[i,23] <- scores$fav_abv[scores$und_abv == scores[i,20]]
    scores[i,24] <- scores$fav_score[scores$fav_abv == scores[i,23]]
  } else {
-   scores[i,22] <- scores$fav_score[scores$fav_abv == scores[i,20]]   
+   scores[i,22] <- scores$fav_score[scores$fav_abv == scores[i,20]]
    scores[i,23] <- scores$und_abv[scores$fav_abv == scores[i,20]]
    scores[i,24] <- scores$und_score[scores$und_abv == scores[i,23]]
  }
- 
+
  names(scores)[22] <- 'pick_score'
  names(scores)[23] <- 'opp_abv'
  names(scores)[24] <- 'opp_score'
- 
+
  scores$act_spd <- scores$opp_score - scores$pick_score
- 
+
  scores$ATS.hit <- scores$act_spd < scores$pick_spd
- 
+
  if (scores[i,26] == TRUE){
    rankings$ATS.W[rankings$Abv == scores[i,20]] <- rankings$ATS.W[rankings$Abv == scores[i,20]] + 1
-   rankings$Units[rankings$Abv == scores[i,20]] <- rankings$Units[rankings$Abv == scores[i,20]] + 0.91   
+   rankings$Units[rankings$Abv == scores[i,20]] <- rankings$Units[rankings$Abv == scores[i,20]] + 0.91
  } else {
    rankings$ATS.L[rankings$Abv == scores[i,20]] <- rankings$ATS.L[rankings$Abv == scores[i,20]] + 1
-   rankings$Units[rankings$Abv == scores[i,20]] <- rankings$Units[rankings$Abv == scores[i,20]] - 1   
+   rankings$Units[rankings$Abv == scores[i,20]] <- rankings$Units[rankings$Abv == scores[i,20]] - 1
  }
 
-  
+
 }
 
 rankings$ATS <- paste0(rankings$ATS.W, '-', rankings$ATS.L)
@@ -267,6 +277,9 @@ write_csv(rankings, 'cbb_rankings_ncaahoopr.csv')
 # RESULTS
 ######################
 
+master_results <- read.csv('results.csv')
+master_results$Date <- as.Date(master_results$Date)
+
 results <- data.frame(matrix(ncol = 5, nrow = 1))
 
 date <- scores[1,2]
@@ -280,7 +293,15 @@ results[,3] <- losses
 results[,4] <- (results[,2] / (results[,2] + results[,3])) * 100
 results[,5] <- units
 
-colnames(results) <- c('Date','ATS.Win', 'ATS.Loss','Win%','Units')
+colnames(results) <- c('Date','ATS.Win', 'ATS.Loss','Win.Per','Units')
 
-write_csv(results, 'results.csv')
+master_results <- rbind(master_results, results)
+
+last_row <- nrow(master_results)
+
+master_results[last_row,c(2,3,5)] <- master_results[last_row,c(2,3,5)] - master_results[last_row-1,c(2,3,5)]
+master_results$Win.Per <- (master_results[,2] / (master_results[,2] + master_results[,3])) * 100
+
+
+write_csv(master_results, 'results.csv')
 
