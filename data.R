@@ -51,7 +51,7 @@ rankings <- read.csv('cbb_rankings_ncaahoopr.csv')
 ####################################
 
 
-# scores <- get_master_schedule('2022-11-15')
+# scores <- get_master_schedule('2022-11-16')
 # scores$away <- iconv(scores$away, from = "UTF-8", to = "ASCII//TRANSLIT")
 # scores$home <- iconv(scores$home, from = "UTF-8", to = "ASCII//TRANSLIT")
 # scores$away <- str_trim(scores$away, "left")
@@ -103,12 +103,21 @@ for (i in ids){
  home_abv <- unlist(strsplit(abv, " "))[2]
  home_abv_list <- append(home_abv_list, home_abv)
 
- #Get Odds
+ # if (i == 401483444){
+ #   odds == 'CAL -1.5'
+ # } else {
+ #   odds <- unlist(strsplit(pagetext, "Line: "))[[2]][1]
+ #   odds <- unlist(strsplit(odds, "\n"))[1]
+ # }
+   
  odds <- unlist(strsplit(pagetext, "Line: "))[[2]][1]
  odds <- unlist(strsplit(odds, "\n"))[1]
+
  lines <- append(lines, odds)
 }
 
+
+# lines[[50]] <- 'CAL -1.5'
 # lines <- append(lines, "UCSD -2.0")
 # away_abv_list <- append(away_abv_list, 'SAC')
 # home_abv_list <- append(home_abv_list, 'UCSD')
@@ -187,6 +196,25 @@ for (i in 1:nrow(scores)){
 
  names(scores)[16] <- 'away_prob'
  names(scores)[17] <- 'home_prob'
+ 
+ if (ptsAway > ptsHome){
+   rankings$Win[rankings$Team == away] <- rankings$Win[rankings$Team == away] + 1
+   rankings$Loss[rankings$Team == home] <- rankings$Loss[rankings$Team == home] + 1
+
+   rankings$Elo[rankings$Team == away] <- round(rAway + 32*(1 - scores[i,16]),0)
+   rankings$Elo[rankings$Team == home] <- round(rHome + 32*(0 - scores[i,17]),0)
+ } else {
+   rankings$Win[rankings$Team == home] <- rankings$Win[rankings$Team == home] + 1
+   rankings$Loss[rankings$Team == away] <- rankings$Loss[rankings$Team == away] + 1
+
+   rankings$Elo[rankings$Team == away] <- round(rAway + 32*(0 - scores[i,16]),0)
+   rankings$Elo[rankings$Team == home] <- round(rHome + 32*(1 - scores[i,17]),0)
+ } 
+ 
+#}
+  #################### 
+  # Betting Line Calcs 
+  ####################
 
  if (scores[i,17] > scores[i,16]){
    hspr <- (-128.07 * (scores[i,17]**2)) + (117.25 * scores[i,17]) - 28.482
@@ -208,20 +236,6 @@ for (i in 1:nrow(scores)){
 
  names(scores)[18] <- 'mod_away_spd'
  names(scores)[19] <- 'mod_home_spd'
-
- if (ptsAway > ptsHome){
-   rankings$Win[rankings$Team == away] <- rankings$Win[rankings$Team == away] + 1
-   rankings$Loss[rankings$Team == home] <- rankings$Loss[rankings$Team == home] + 1
-
-   rankings$Elo[rankings$Team == away] <- round(rAway + 32*(1 - scores[i,16]),0)
-   rankings$Elo[rankings$Team == home] <- round(rHome + 32*(0 - scores[i,17]),0)
- } else {
-   rankings$Win[rankings$Team == home] <- rankings$Win[rankings$Team == home] + 1
-   rankings$Loss[rankings$Team == away] <- rankings$Loss[rankings$Team == away] + 1
-
-  rankings$Elo[rankings$Team == away] <- round(rAway + 32*(0 - scores[i,16]),0)
-   rankings$Elo[rankings$Team == home] <- round(rHome + 32*(1 - scores[i,17]),0)
- }
 
 
  if (scores[i,18] < scores[i,9]) {
@@ -252,7 +266,7 @@ for (i in 1:nrow(scores)){
  scores$act_spd <- scores$opp_score - scores$pick_score
 
  scores$ATS.hit <- scores$act_spd < scores$pick_spd
-
+ 
  if (scores[i,26] == TRUE){
    rankings$ATS.W[rankings$Abv == scores[i,20]] <- rankings$ATS.W[rankings$Abv == scores[i,20]] + 1
    rankings$Units[rankings$Abv == scores[i,20]] <- rankings$Units[rankings$Abv == scores[i,20]] + 0.91
@@ -260,17 +274,24 @@ for (i in 1:nrow(scores)){
    rankings$ATS.L[rankings$Abv == scores[i,20]] <- rankings$ATS.L[rankings$Abv == scores[i,20]] + 1
    rankings$Units[rankings$Abv == scores[i,20]] <- rankings$Units[rankings$Abv == scores[i,20]] - 1
  }
-
-
+ 
+ if (scores[i,20] %in% scores$home_abv){
+   scores[i,27] <- scores[i,19]
+ } else {
+   scores[i,27] <- scores[i,18]
+ }
+ 
+ names(scores)[27] <- 'mod_pick_spd'
+ 
 }
 
-rankings$ATS <- paste0(rankings$ATS.W, '-', rankings$ATS.L)
+
 rankings$Rec <- paste0(rankings$Win, '-', rankings$Loss)
 rankings <- rankings %>% arrange(desc(Elo))
 rankings$Rk <- c(1:363)
 rankings$Last.3 <- (rankings$Elo - rankings$Three) + (rankings$Three - rankings$Two) + (rankings$Two - rankings$One)
 
-write_csv(rankings, 'cbb_rankings_ncaahoopr.csv')
+#write_csv(rankings, 'cbb_rankings_ncaahoopr.csv')
 
 
 ######################
@@ -278,30 +299,38 @@ write_csv(rankings, 'cbb_rankings_ncaahoopr.csv')
 ######################
 
 master_results <- read.csv('results.csv')
-master_results$Date <- as.Date(master_results$Date)
+master_results$date <- as.Date(master_results$date)
+# 
+# results <- data.frame(matrix(ncol = 5, nrow = 1))
+# 
+# date <- scores[1,2]
+# wins <- rankings %>% summarise(sum(ATS.W))
+# losses <- rankings %>% summarise(sum(ATS.L))
+# units <- rankings %>% summarise(sum(Units))
+# 
+# results[,1] <- date
+# results[,2] <- wins
+# results[,3] <- losses
+# results[,4] <- (results[,2] / (results[,2] + results[,3])) * 100
+# results[,5] <- units
+# 
+# colnames(results) <- c('Date','ATS.Win', 'ATS.Loss','Win.Per','Units')
+# 
+# 
+# last_row <- nrow(master_results)
+# 
+# master_results[last_row,c(2,3,5)] <- master_results[last_row,c(2,3,5)] - master_results[last_row-1,c(2,3,5)]
+# master_results$Win.Per <- (master_results[,2] / (master_results[,2] + master_results[,3])) * 100
+# 
+# 
+# write_csv(master_results, 'results.csv')
 
-results <- data.frame(matrix(ncol = 5, nrow = 1))
+results <- scores
 
-date <- scores[1,2]
-wins <- rankings %>% summarise(sum(ATS.W))
-losses <- rankings %>% summarise(sum(ATS.L))
-units <- rankings %>% summarise(sum(Units))
+results$mod_diff <- abs(results$mod_pick_spd - results$pick_spd)
 
-results[,1] <- date
-results[,2] <- wins
-results[,3] <- losses
-results[,4] <- (results[,2] / (results[,2] + results[,3])) * 100
-results[,5] <- units
-
-colnames(results) <- c('Date','ATS.Win', 'ATS.Loss','Win.Per','Units')
+results <- results[c(2,1,20,21,28,26)]
 
 master_results <- rbind(master_results, results)
 
-last_row <- nrow(master_results)
-
-master_results[last_row,c(2,3,5)] <- master_results[last_row,c(2,3,5)] - master_results[last_row-1,c(2,3,5)]
-master_results$Win.Per <- (master_results[,2] / (master_results[,2] + master_results[,3])) * 100
-
-
 write_csv(master_results, 'results.csv')
-

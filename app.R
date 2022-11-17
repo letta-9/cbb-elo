@@ -33,8 +33,8 @@ min_team <- min_team[!duplicated(min_team$Conf),]
 max_team <- max_team[,c(2,3,5)]
 min_team <- min_team[,c(2,3,5)]
 conf <- merge(conf, c(max_team,min_team), by='Conf')
-conf <- conf[,c(2,1,3,4,5,6,8)]
-colnames(conf) <- c('Rk','Conf','avgElo','maxTeam','maxElo','minTeam','minElo')
+conf <- conf[,c(2,1,3)]
+colnames(conf) <- c('Rk','Conf','avgElo')
 conf <- conf %>% arrange(Rk)
 
 next_games <- rankings[c(1,2,3,4,10)]
@@ -42,6 +42,12 @@ next_games <- rankings[c(1,2,3,4,10)]
 conf_list <- unique(rankings[,3])
 conf_list <- data.frame(conf_list)
 conf_list <- conf_list %>% arrange(conf_list)
+
+top_hot <- rankings %>% arrange(desc(Last.3)) %>% slice(1:10)
+top_hot <- top_hot[c(1,2,4,5,9)]
+
+top_not <- rankings %>% arrange(Last.3) %>% slice(1:10)
+top_not <- top_not[c(1,2,4,5,9)]
 
 
 
@@ -80,9 +86,12 @@ ui <- dashboardPage(
                     collapsed = T,
                     tabBox(id = 'conf_box',
                         width = 4,
+                        tabPanel("Who's Hot", 
+                                 tableOutput('top_hot')),
+                        tabPanel("Who's Not", 
+                                 tableOutput('top_not')),                       
                         tabPanel("Conf Summary", 
-                                 tableOutput('conferences'), 
-                                 style = "font-size: 70%;"),
+                                 tableOutput('conferences')),
                         tabPanel("By Conf",
                                  selectInput('conf_drop','Conference', conf_list),
                                  tableOutput('by_conf')),
@@ -105,7 +114,7 @@ ui <- dashboardPage(
                   selectInput('home_team','Home Team', choices = teams),
                   checkboxInput('neutral', 'Neutral Site', FALSE),
                   actionButton('submit', 'Submit')),
-              box(title = "11/15 Games",
+              box(title = "11/16 Games",
                   solidHeader = F,
                   width = 4,
                   collapsible = F,
@@ -140,14 +149,18 @@ ui <- dashboardPage(
 server <- function(input, output, session){
   
   output$first <- renderValueBox({
-    valueBox(paste0(rankings$Team[rankings$Elo == max(rankings$Elo)],' (',max(rankings$Elo),')'), 
+    first <- rankings$Team[rankings$Elo == max(rankings$Elo)]
+    first <- first[1]
+    valueBox(paste0(first,' (',max(rankings$Elo),')'),
              "Highest Ranked (Elo)", icon = icon("crown"), color = "yellow")
-  })  
+  })
   
   output$last <- renderValueBox({
-    valueBox(paste0(rankings$Team[rankings$Elo == min(rankings$Elo)],' (',min(rankings$Elo),')'), 
+    last <- rankings$Team[rankings$Elo == min(rankings$Elo)]
+    last <- last[1]
+    valueBox(paste0(last,' (',min(rankings$Elo),')'),
              "Lowest Ranked (Elo)", icon = icon("poop"), color = "purple")
-  })  
+  })
   
   
   output$hot <- renderValueBox({
@@ -163,21 +176,6 @@ server <- function(input, output, session){
     valueBox(paste0(not,' (',rankings$Last.3[rankings$Team == not],')'),
              "Who's Not (Last 3)", icon = icon("snowflake"), color = "aqua")
   })
-
-  # output$not <- renderValueBox({
-  #   valueBox(paste0(rankings$Team[rankings$Last.3 == min(rankings$Last.3)],' (',min(rankings$Last.3),')'),
-  #            "Who's Not (Last 3)", icon = icon("snowflake"), color = "aqua")
-  # })
-  
-  # output$hot <- renderValueBox({
-  #   valueBox(paste0(rankings$Team[rankings$Last.3 == max(rankings$Last.3)]),
-  #            "Who's Hot", icon = icon("fire"), color = "red")
-  # })
-  # 
-  # output$not <- renderValueBox({
-  #   valueBox(paste0(rankings$Team[rankings$Last.3 == min(rankings$Last.3)]),
-  #            "Who's Not", icon = icon("snowflake"), color = "aqua")
-  # })
   
   
   output$rankings <- renderDT(
@@ -186,6 +184,15 @@ server <- function(input, output, session){
     rownames = FALSE,
     selection = "single",
   )
+  
+  output$top_hot <- renderTable(
+    top_hot
+  )  
+  
+  
+  output$top_not <- renderTable(
+    top_not
+  )  
   
   output$conferences <- renderTable(
     conf
